@@ -1,8 +1,13 @@
 const express = require('express')
 const app = express()
-const morgan = require('morgan')
 
+const morgan = require('morgan')
 app.use(express.json())
+
+const cors = require('cors')
+app.use(cors())
+
+
 
 morgan.token('data', function (req, res, method) { if(method === 'POST'){return JSON.stringify(req.body)}})
 
@@ -128,7 +133,7 @@ const generateId = (max) => {
     // return maxId + 1
 }
 
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 })
