@@ -9,6 +9,9 @@ app.use(cors())
 
 app.use(express.static('build'))
 
+require('dotenv').config()
+
+const Person = require('./models/person')
 
 
 
@@ -56,38 +59,36 @@ app.get('/', (request, response) => {
 })
 
 app.get('/api/persons', (request, response) => {
-    response.json(persons)
+    Person.find({}).then(persons => {
+        response.json(persons)
+    })
 })
 
 app.get('/info', (request, response) => {
     const date = new Date()
-    const message = `Phonebook has info for ${persons.length} people`
+    Person.find({}).then(persons => {
+        const message = `Phonebook has info for ${persons.length} people`
 
-    response.send(`<div>${message}</div> <br /> <div>${date}</div>`)
-})
-
-
-app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const person = persons.find(person => person.id === id)
+        response.send(`<div>${message}</div> <br /> <div>${date}</div>`)
+    })
     
-    if(person){
+    
+})
+
+
+app.get('/api/persons/:id', (request, response, next) => {
+    Person.findById(request.params.id).then(person => {
         response.json(person)
-    } else {
-        response.status(404).end()
-    }
+    }).catch(error => next(error))
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter(person => person.id !== id)
 
-    response.status(204).end()
-})
 
 app.post('/api/persons', (request, response) => {
+
     const body = request.body
 
+    
     if(!body.name && !body.number){
         return response.status(400).json({ 
          error: 'name and number missing' 
@@ -102,41 +103,62 @@ app.post('/api/persons', (request, response) => {
         })
     }
 
-
-    const exists = persons.find(person => person.name === body.name)
-
-    //exists is really a person object and not a boolean value but if find doesn't
-    //find anything it returns undefined and it has boolean value of false/falsy
-    //all objects have boolean value true/truthy
-    if(exists){
-        return response.status(400).json({
-            error: `${body.name} is already in the phonebook`
-        })
-    }
-
-    const person = {
-        id: generateId(10000),
+    const person = new Person({
         name: body.name,
-        number:  body.number,
-    }
+        number: body.number,
+    })
 
-    persons = persons.concat(person)
-
-    response.json(person)
+    person.save().then(savedPerson => {
+        response.json(savedPerson)
+    })   
 
 })
 
-const generateId = (max) => {
-    return Math.floor(Math.random() * max)
+app.delete('/api/persons/:id', (request, response, next) => {
+    Person.findByIdAndRemove(request.params.id)
+        .then(result => {
+        response.status(204).end()
+        })
+        .catch(error => next(error))
+})
+  
+  
+app.put('/api/persons/:id', (request, response, next) => {
+    const body = request.body
 
-    // //a better function would be
-    // const maxId = persons.length > 0
-    //   ? Math.max(...persons.map(p => p.id))
-    //   : 0
-    // return maxId + 1
+    const note = {
+        name: body.name,
+        number: body.number,
+    }
+
+    Person.findByIdAndUpdate(request.params.id, note, { new: true })
+        .then(updatedPerson => {
+        response.json(updatedPerson)
+        })
+        .catch(error => next(error))
+})
+  
+
+const unknownEndpoint = (request, response) => {
+    response.status(404).send({ error: 'unknown endpoint' })
+  }
+  
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+  
+    if (error.name === 'CastError') {
+      return response.status(400).send({ error: 'malformatted id' })
+    }
+  
+    next(error)
 }
 
-const PORT = process.env.PORT || 3001
+app.use(errorHandler)
+
+
+const PORT = process.env.PORT
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 })
