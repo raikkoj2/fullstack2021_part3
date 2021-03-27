@@ -80,7 +80,7 @@ app.post('/api/persons', (request, response, next) => {
 
     person
         .save()
-        .then(savedPerson => savedPerson.toJSON)
+        .then(savedPerson => savedPerson.toJSON())
         .then(formattedPerson =>{
             response.json(formattedPerson)
         })
