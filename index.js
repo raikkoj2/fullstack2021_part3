@@ -11,6 +11,7 @@ app.use(express.static('build'))
 
 
 
+
 morgan.token('data', function (req, res, method) { if(method === 'POST'){return JSON.stringify(req.body)}})
 
 app.use(morgan(function (tokens, req, res) {
